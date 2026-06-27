@@ -21,7 +21,7 @@ const CommissionConfig: React.FC = () => {
     setLoading(true);
     try {
       const res = await getCommissionConfigs();
-      setConfigs(res.data.data || []);
+      setConfigs(res.data || []);
     } catch { } finally { setLoading(false); }
   }, []);
 

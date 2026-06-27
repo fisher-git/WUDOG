@@ -1,166 +1,165 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Row, Col, Card, Statistic, Select, Spin, Typography } from 'antd';
+import { Row, Col, Card, Statistic, Select, Spin, Typography, Table, Tag } from 'antd';
 import {
-  RiseOutlined,
-  FallOutlined,
   UserOutlined,
   ShoppingCartOutlined,
   DollarOutlined,
   TeamOutlined,
+  ShopOutlined,
+  AccountBookOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import LineChart from '../../../components/charts/LineChart';
 import BarChart from '../../../components/charts/BarChart';
 import PieChart from '../../../components/charts/PieChart';
-import FunnelChart from '../../../components/charts/FunnelChart';
 import { getOverview, type DashboardOverview } from '../../../services/dashboard';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 
-const { Title } = Typography;
-
-const rangeOptions = [
-  { label: '近7天', value: 'week' },
-  { label: '近30天', value: 'month' },
-  { label: '近90天', value: 'quarter' },
-  { label: '近1年', value: 'year' },
-];
+const { Title, Text } = Typography;
 
 const DashboardPage: React.FC = () => {
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(false);
-  const [range, setRange] = useState('week');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getOverview(range);
-      setData(res.data.data);
+      const res = await getOverview();
+      setData(res.data);
     } catch {
       // error handled by interceptor
     } finally {
       setLoading(false);
     }
-  }, [range]);
+  }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // 准备图表数据
-  const orderTrendX = data?.orderTrend
-    ? [...new Set(data.orderTrend.map((item) => item.date))]
+  // 准备图表数据 — 适配后端返回格式
+  // 后端 orderTrend: [{ date, clothing, food, lodging, travel }, ...]
+  const orderTrendX = data?.orderTrend?.map((item) => item.date) || [];
+  const orderTrendSeries = data?.orderTrend
+    ? ['clothing', 'food', 'lodging', 'travel'].map((mod) => ({
+        name: { clothing: '非遗商品', food: '餐饮美食', lodging: '民宿住宿', travel: '出行旅游' }[mod] || mod,
+        data: data.orderTrend.map((item: any) => Number(item[mod]) || 0),
+      }))
     : [];
-  const orderTrendSeries = React.useMemo(() => {
-    if (!data?.orderTrend) return [];
-    const moduleMap = new Map<string, number[]>();
-    data.orderTrend.forEach((item) => {
-      if (!moduleMap.has(item.module)) moduleMap.set(item.module, []);
-      moduleMap.get(item.module)!.push(item.count);
-    });
-    // 补充数组长度
-    moduleMap.forEach((arr, key) => {
-      while (arr.length < orderTrendX.length) arr.push(0);
-    });
-    return Array.from(moduleMap.entries()).map(([name, d]) => ({ name, data: d }));
-  }, [data, orderTrendX]);
 
-  const userGrowthX = data?.userGrowth?.map((item) => item.date.slice(5)) || [];
+  const userGrowthX = data?.userGrowth?.map((item) => item.date) || [];
   const userGrowthSeries = data?.userGrowth
     ? [{ name: '新增用户', data: data.userGrowth.map((item) => item.count) }]
     : [];
 
-  const contentData = data?.contentStats || [];
-  const funnelData = data?.funnelData || [];
+  const contentData = (data?.contentStats || []).map((item) => ({ name: item.type, value: item.count }));
 
-  const changeColor = (val: number) => {
-    if (val === 0) return '#8c8c8c';
-    return val > 0 ? '#52c41a' : '#ff4d4f';
-  };
-  const changeIcon = (val: number) => {
-    if (val === 0) return null;
-    return val > 0 ? <RiseOutlined /> : <FallOutlined />;
-  };
+  // Top merchants columns
+  const topMerchantColumns = [
+    { title: '商家', dataIndex: 'shopName', key: 'shopName', width: 140 },
+    {
+      title: '模块', dataIndex: 'module', key: 'module', width: 80,
+      render: (m: string) => {
+        const map: Record<string, { color: string; label: string }> = {
+          clothing: { color: 'blue', label: '服饰' },
+          food: { color: 'orange', label: '美食' },
+          lodging: { color: 'purple', label: '住宿' },
+          travel: { color: 'green', label: '出行' },
+        };
+        const cfg = map[m] || { color: 'default', label: m };
+        return <Tag color={cfg.color}>{cfg.label}</Tag>;
+      },
+    },
+    {
+      title: '订单数', dataIndex: 'orderCount', key: 'orderCount', width: 80,
+    },
+    {
+      title: '销售额', dataIndex: 'totalAmount', key: 'totalAmount', width: 120,
+      render: (v: number) => `¥${v.toLocaleString()}`,
+    },
+  ];
 
   return (
     <Spin spinning={loading}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Title level={4} style={{ margin: 0 }}>数据概览</Title>
-        <Select
-          value={range}
-          onChange={setRange}
-          options={rangeOptions}
-          style={{ width: 120 }}
-        />
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          数据来源：MySQL 实时查询 | 更新时间：刚刚
+        </Text>
       </div>
 
-      {/* 统计卡片 */}
+      {/* 第一行统计卡片 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="stat-card" bordered={false}>
+          <Card className="stat-card">
             <Statistic
               title="日活用户 (DAU)"
               value={data?.dau || 0}
               prefix={<TeamOutlined />}
-              suffix={
-                data?.dauChange ? (
-                  <span style={{ fontSize: 14, color: changeColor(data.dauChange) }}>
-                    {changeIcon(data.dauChange)}
-                    {data.dauChange > 0 ? '+' : ''}{data.dauChange}%
-                  </span>
-                ) : null
-              }
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="stat-card" bordered={false}>
+          <Card className="stat-card">
             <Statistic
-              title="新增用户"
+              title="今日新增用户"
               value={data?.newUsers || 0}
               prefix={<UserOutlined />}
-              suffix={
-                data?.newUsersChange ? (
-                  <span style={{ fontSize: 14, color: changeColor(data.newUsersChange) }}>
-                    {changeIcon(data.newUsersChange)}
-                    {data.newUsersChange > 0 ? '+' : ''}{data.newUsersChange}%
-                  </span>
-                ) : null
-              }
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="stat-card" bordered={false}>
+          <Card className="stat-card">
             <Statistic
-              title="订单数"
-              value={data?.totalOrders || 0}
+              title="今日订单数"
+              value={data?.orderCount || 0}
               prefix={<ShoppingCartOutlined />}
-              suffix={
-                data?.ordersChange ? (
-                  <span style={{ fontSize: 14, color: changeColor(data.ordersChange) }}>
-                    {changeIcon(data.ordersChange)}
-                    {data.ordersChange > 0 ? '+' : ''}{data.ordersChange}%
-                  </span>
-                ) : null
-              }
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="stat-card" bordered={false} style={{ borderLeft: '3px solid #C8A45C' }}>
+          <Card className="stat-card" style={{ borderLeft: '3px solid #C8A45C' }}>
             <Statistic
-              title="GMV (元)"
+              title="今日 GMV (元)"
               value={data?.gmv || 0}
               precision={2}
               prefix={<DollarOutlined />}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 第二行统计卡片 */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={8}>
+          <Card className="stat-card">
+            <Statistic
+              title="用户总数"
+              value={data?.totalUsers || 0}
+              prefix={<UserOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card className="stat-card">
+            <Statistic
+              title="商家总数"
+              value={data?.totalMerchants || 0}
               suffix={
-                data?.gmvChange ? (
-                  <span style={{ fontSize: 14, color: changeColor(data.gmvChange) }}>
-                    {changeIcon(data.gmvChange)}
-                    {data.gmvChange > 0 ? '+' : ''}{data.gmvChange}%
-                  </span>
-                ) : null
+                <span style={{ fontSize: 13, color: '#8c8c8c' }}>
+                  / 活跃 {data?.activeMerchants || 0}
+                </span>
               }
+              prefix={<ShopOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card className="stat-card" style={{ borderLeft: '3px solid #1B3A5C' }}>
+            <Statistic
+              title="平台总营收 (元)"
+              value={data?.financeStats?.totalRevenue || 0}
+              precision={2}
+              prefix={<AccountBookOutlined />}
             />
           </Card>
         </Col>
@@ -169,9 +168,8 @@ const DashboardPage: React.FC = () => {
       {/* 图表行 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={12}>
-          <Card bordered={false}>
+          <Card title="各模块订单趋势 (近7日)">
             <LineChart
-              title="各模块订单趋势"
               xData={orderTrendX}
               series={orderTrendSeries}
               height={360}
@@ -179,9 +177,8 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card bordered={false}>
+          <Card title="用户增长趋势 (近7日)">
             <BarChart
-              title="用户增长趋势"
               xData={userGrowthX}
               series={userGrowthSeries}
               height={360}
@@ -191,23 +188,59 @@ const DashboardPage: React.FC = () => {
       </Row>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={12}>
-          <Card bordered={false}>
+        <Col xs={24} lg={8}>
+          <Card title="内容统计">
             <PieChart
-              title="内容分类统计"
               data={contentData}
-              height={360}
+              height={320}
               radius="65%"
             />
           </Card>
         </Col>
-        <Col xs={24} lg={12}>
-          <Card bordered={false}>
-            <FunnelChart
-              title="GMV 漏斗分析"
-              data={funnelData}
-              height={360}
+        <Col xs={24} lg={8}>
+          <Card
+            title={<span><TrophyOutlined style={{ marginRight: 8, color: '#C8A45C' }} />TOP 商家排行</span>}
+          >
+            <Table
+              dataSource={data?.merchantStats?.top || []}
+              columns={topMerchantColumns}
+              rowKey="id"
+              size="small"
+              pagination={false}
+              scroll={{ x: 420 }}
             />
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card title={<span><AccountBookOutlined style={{ marginRight: 8 }} />财务概览</span>}>
+            <Row gutter={[0, 16]}>
+              <Col span={24}>
+                <Statistic
+                  title="平台收入（佣金）"
+                  value={data?.financeStats?.platformIncome || 0}
+                  precision={2}
+                  prefix="¥"
+                  valueStyle={{ color: '#3f8600', fontSize: 24 }}
+                />
+              </Col>
+              <Col span={24}>
+                <Statistic
+                  title="待结算金额"
+                  value={data?.financeStats?.pendingSettlement || 0}
+                  precision={2}
+                  prefix="¥"
+                  valueStyle={{ color: '#cf1322', fontSize: 20 }}
+                />
+              </Col>
+              <Col span={24}>
+                <div style={{ fontSize: 13, color: '#8c8c8c' }}>
+                  总营收 ¥{(data?.financeStats?.totalRevenue || 0).toLocaleString()} |
+                  佣金率约 {data?.financeStats?.totalRevenue
+                    ? ((data.financeStats.platformIncome / data.financeStats.totalRevenue) * 100).toFixed(1)
+                    : 0}%
+                </div>
+              </Col>
+            </Row>
           </Card>
         </Col>
       </Row>

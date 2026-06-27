@@ -11,7 +11,7 @@ const PaymentConfig: React.FC = () => {
   useEffect(() => {
     getPaymentConfig()
       .then((res) => {
-        form.setFieldsValue(res.data.data);
+        form.setFieldsValue(res.data);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

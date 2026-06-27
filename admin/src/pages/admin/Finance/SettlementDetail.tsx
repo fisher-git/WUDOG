@@ -28,8 +28,10 @@ const SettlementDetail: React.FC = () => {
     setLoading(true);
     getSettlementDetail(Number(id))
       .then((res) => {
-        setSheet(res.data.data.sheet);
-        setRecords(res.data.data.records);
+        // Backend returns settlement detail directly with records embedded
+        const detail = res.data as any;
+        setSheet(detail);
+        setRecords(detail.records || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

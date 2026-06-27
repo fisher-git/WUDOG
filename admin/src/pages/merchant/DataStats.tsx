@@ -28,7 +28,7 @@ const DataStats: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     api.get('/merchant/stats', { params: { range } })
-      .then((res) => setData(res.data.data))
+      .then((res) => setData(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [range]);

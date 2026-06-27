@@ -26,8 +26,8 @@ const RolePermissionPage: React.FC = () => {
     setLoading(true);
     try {
       const [rolesRes, permsRes] = await Promise.all([getRoles(), getPermissions()]);
-      setRoles(rolesRes.data.data);
-      setAllPermissions(permsRes.data.data);
+      setRoles(rolesRes.data);
+      setAllPermissions(permsRes.data);
     } catch {
       // handled
     } finally {

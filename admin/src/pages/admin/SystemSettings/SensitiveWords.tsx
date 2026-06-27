@@ -21,8 +21,8 @@ const SensitiveWords: React.FC = () => {
     setLoading(true);
     try {
       const res = await getSensitiveWords({ page, pageSize });
-      setData(res.data.data.list);
-      setTotal(res.data.data.total);
+      setData(res.data.list);
+      setTotal(res.data.total);
     } catch { } finally { setLoading(false); }
   }, [page, pageSize]);
 
@@ -50,7 +50,7 @@ const SensitiveWords: React.FC = () => {
     if (words.length === 0) { message.warning('未检测到有效内容'); return false; }
     try {
       const res = await batchImportSensitiveWords(words);
-      message.success(`成功导入 ${res.data.data?.imported || words.length} 个敏感词`);
+      message.success(`成功导入 ${res.data?.imported || words.length} 个敏感词`);
       fetchData();
     } catch { }
     return false; // prevent upload

@@ -40,7 +40,7 @@ const Workbench: React.FC = () => {
     setLoading(true);
     api.get('/merchant/workbench')
       .then((res) => {
-        const d = res.data.data;
+        const d = res.data;
         setStats(d?.stats || { todayOrders: 0, pendingShip: 0, pendingRefund: 0, todayRevenue: 0 });
         setOrders(d?.recentOrders || []);
       })

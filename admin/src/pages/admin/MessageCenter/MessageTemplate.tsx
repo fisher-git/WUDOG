@@ -25,8 +25,8 @@ const MessageTemplate: React.FC = () => {
     setLoading(true);
     try {
       const res = await getTemplates({ page, pageSize });
-      setData(res.data.data.list);
-      setTotal(res.data.data.total);
+      setData(res.data.list);
+      setTotal(res.data.total);
     } catch { } finally { setLoading(false); }
   }, [page, pageSize]);
 

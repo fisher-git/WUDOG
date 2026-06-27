@@ -34,7 +34,7 @@ const ApplicationDetail: React.FC = () => {
     if (!id) return;
     setLoading(true);
     getApplicationDetail(Number(id))
-      .then((res) => setDetail(res.data.data))
+      .then((res) => setDetail(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
@@ -85,6 +85,10 @@ const ApplicationDetail: React.FC = () => {
     <Spin spinning={loading}>
       <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/audit')}
         style={{ marginBottom: 16, padding: 0 }}>返回列表</Button>
+
+      {!loading && !detail && (
+        <Card><Typography.Text type="secondary">申请不存在或已被删除</Typography.Text></Card>
+      )}
 
       {detail && (
         <>
@@ -137,7 +141,7 @@ const ApplicationDetail: React.FC = () => {
 
             <Title level={5} style={{ marginTop: 24 }}>资质材料</Title>
             <Row gutter={[16, 16]}>
-              {detail.materials?.map((url, idx) => (
+              {(Array.isArray(detail.materials) ? detail.materials : []).map((url, idx) => (
                 <Col key={idx} xs={24} sm={12} md={8} lg={6}>
                   <Card size="small" hoverable>
                     <Image src={url} alt={`材料${idx + 1}`} style={{ width: '100%', maxHeight: 200, objectFit: 'cover' }}

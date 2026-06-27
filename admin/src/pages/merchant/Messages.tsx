@@ -36,7 +36,7 @@ const Messages: React.FC = () => {
       const res = await api.get('/merchant/messages', {
         params: { page, pageSize: 20, type: type || undefined },
       });
-      setData(res.data.data?.list || []);
+      setData(res.data?.list || []);
     } catch { } finally { setLoading(false); }
   }, [page, type]);
 

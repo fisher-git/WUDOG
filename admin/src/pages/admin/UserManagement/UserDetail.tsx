@@ -25,8 +25,8 @@ const UserDetail: React.FC = () => {
     const fetchFn = detailType === 'merchant' ? getMerchantDetail : getTouristDetail;
     fetchFn(Number(id))
       .then((res) => {
-        if (detailType === 'merchant') setMerchant(res.data.data as MerchantInfo);
-        else setTourist(res.data.data as TouristInfo);
+        if (detailType === 'merchant') setMerchant(res.data as MerchantInfo);
+        else setTourist(res.data as TouristInfo);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -48,7 +48,7 @@ const UserDetail: React.FC = () => {
       <Button
         type="link"
         icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/admin/users')}
+        onClick={() => navigate(detailType === 'merchant' ? '/admin/users/merchants' : '/admin/users/tourists')}
         style={{ marginBottom: 16, padding: 0 }}
       >
         返回列表
@@ -72,7 +72,7 @@ const UserDetail: React.FC = () => {
                   {tourist.phone?.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}
                 </Descriptions.Item>
                 <Descriptions.Item label="注册时间">
-                  {tourist.registeredAt ? dayjs(tourist.registeredAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
+                  {tourist.createdAt ? dayjs(tourist.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label="最后登录">
                   {tourist.lastLoginAt ? dayjs(tourist.lastLoginAt).format('YYYY-MM-DD HH:mm:ss') : '-'}

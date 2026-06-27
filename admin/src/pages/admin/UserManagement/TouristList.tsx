@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Table, Card, Input, Select, Button, Space, Tag, Avatar, Row, Col, DatePicker, Modal, message,
 } from 'antd';
-import { SearchOutlined, EyeOutlined, StopOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { SearchOutlined, EyeOutlined, StopOutlined, CheckCircleOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import { getTouristList, banTourist, unbanTourist, type TouristInfo } from '../../../services/user';
@@ -38,8 +38,8 @@ const TouristList: React.FC = () => {
         startDate: dateRange?.[0]?.format('YYYY-MM-DD'),
         endDate: dateRange?.[1]?.format('YYYY-MM-DD'),
       });
-      setData(res.data.data.list);
-      setTotal(res.data.data.total);
+      setData(res.data.list);
+      setTotal(res.data.total);
     } catch {
       // handled by interceptor
     } finally {
@@ -102,7 +102,7 @@ const TouristList: React.FC = () => {
     },
     {
       title: '注册时间',
-      dataIndex: 'registeredAt',
+      dataIndex: 'createdAt',
       width: 180,
       render: (v: string) => (v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-'),
     },

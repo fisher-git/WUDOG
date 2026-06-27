@@ -44,8 +44,8 @@ const MerchantList: React.FC = () => {
         status: status || undefined,
       };
       const res = await getMerchantList(params);
-      setData(res.data.data.list);
-      setTotal(res.data.data.total);
+      setData(res.data.list);
+      setTotal(res.data.total);
     } catch {
       // handled
     } finally {

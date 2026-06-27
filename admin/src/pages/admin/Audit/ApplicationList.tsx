@@ -33,8 +33,8 @@ const ApplicationList: React.FC = () => {
         status: tab,
         keyword: keyword || undefined,
       });
-      setData(res.data.data.list);
-      setTotal(res.data.data.total);
+      setData(res.data.list);
+      setTotal(res.data.total);
     } catch {
       // handled
     } finally {

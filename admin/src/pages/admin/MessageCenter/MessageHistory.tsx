@@ -27,8 +27,8 @@ const MessageHistory: React.FC = () => {
         startDate: dateRange?.[0]?.format('YYYY-MM-DD'),
         endDate: dateRange?.[1]?.format('YYYY-MM-DD'),
       });
-      setData(res.data.data.list);
-      setTotal(res.data.data.total);
+      setData(res.data.list);
+      setTotal(res.data.total);
     } catch { } finally { setLoading(false); }
   }, [page, pageSize, keyword, type, dateRange]);
 

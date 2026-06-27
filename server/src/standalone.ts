@@ -15,15 +15,29 @@ const pool = mysql.createPool({
   user: 'root',
   password: '123456',
   database: 'wudong_travel_dev',
+  charset: 'utf8mb4',
   waitForConnections: true,
   connectionLimit: 10,
 });
+
+// Ensure every connection uses UTF-8
+pool.on('connection', (conn) => {
+  conn.query("SET NAMES 'utf8mb4'", () => {});
+  conn.query("SET CHARACTER SET utf8mb4", () => {});
+});
+
+// Helper: parse JSON fields from MySQL (they come as strings)
+function parseMaterials(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try { return JSON.parse(val); } catch { return []; }
+}
 
 const app = new Koa();
 const router = new Router({ prefix: '/api' });
 
 app.use(cors());
-app.use(bodyParser());
+app.use(bodyParser({ encoding: 'utf-8' }));
 
 // ====== JWT Helper ======
 function signToken(payload: any) {
@@ -142,31 +156,144 @@ router.post('/admin/auth/refresh', async (ctx) => {
 
 // ====== DASHBOARD ======
 router.get('/admin/dashboard/overview', async (ctx) => {
-  const [[{ total_users }]]: any = await pool.query('SELECT COUNT(*) as total_users FROM admin_user');
-  const [[{ total_merchants }]]: any = await pool.query('SELECT COUNT(*) as total_merchants FROM merchant');
+  try {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-  ctx.body = {
-    code: 200, message: '查询成功',
-    data: {
-      dau: 156, newUsers: 23, orderCount: 89, gmv: 12680.50,
-      orderTrend: [
-        { date: '06-21', clothing: 1200, food: 800, lodging: 3000, travel: 1500 },
-        { date: '06-22', clothing: 1500, food: 950, lodging: 2800, travel: 1800 },
-        { date: '06-23', clothing: 1100, food: 700, lodging: 3200, travel: 1200 },
-        { date: '06-24', clothing: 1800, food: 1000, lodging: 3500, travel: 2000 },
-        { date: '06-25', clothing: 1300, food: 850, lodging: 2900, travel: 1600 },
-        { date: '06-26', clothing: 1600, food: 900, lodging: 3100, travel: 1700 },
-        { date: '06-27', clothing: 1400, food: 750, lodging: 2700, travel: 1900 },
-      ],
-      userGrowth: [
-        { date: '06-21', count: 12 }, { date: '06-22', count: 18 }, { date: '06-23', count: 15 },
-        { date: '06-24', count: 25 }, { date: '06-25', count: 20 }, { date: '06-26', count: 22 }, { date: '06-27', count: 23 },
-      ],
-      contentStats: [{ type: '游记', count: 45 }, { type: '评论', count: 238 }, { type: '点赞', count: 1205 }],
-      merchantStats: { total: total_merchants, active: total_merchants, top: [] },
-      financeStats: { totalRevenue: 156800, platformIncome: 15680, pendingSettlement: 45200 },
-    },
-  };
+    // 基础统计：查询今日/总计数据
+    const [[{ total_users }]]: any = await pool.query('SELECT COUNT(*) as total_users FROM admin_user');
+    const [[{ total_merchants }]]: any = await pool.query('SELECT COUNT(*) as total_merchants FROM merchant');
+    const [[{ active_merchants }]]: any = await pool.query("SELECT COUNT(*) as active_merchants FROM merchant WHERE status = 'active'");
+
+    // DAU: 今日有订单的不同用户数
+    const [[{ dau }]]: any = await pool.query(
+      'SELECT COUNT(DISTINCT user_id) as dau FROM orders WHERE DATE(created_at) = ?',
+      [today]
+    );
+
+    // 今日新增用户
+    const [[{ newUsers }]]: any = await pool.query(
+      'SELECT COUNT(*) as newUsers FROM admin_user WHERE DATE(created_at) = ?',
+      [today]
+    );
+
+    // 今日订单数和GMV
+    const [[todayOrder]]: any = await pool.query(
+      "SELECT COUNT(*) as orderCount, COALESCE(SUM(amount), 0) as gmv FROM orders WHERE DATE(created_at) = ? AND status != 'cancelled'",
+      [today]
+    );
+
+    // 近7日订单趋势（按日期和模块分组）
+    const [orderRows]: any = await pool.query(
+      `SELECT DATE(created_at) as date, module, COALESCE(SUM(amount), 0) as total
+       FROM orders
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+         AND status IN ('paid','confirmed','shipped','received')
+       GROUP BY DATE(created_at), module
+       ORDER BY date`
+    );
+
+    // 构建 orderTrend: 最近7天，每个模块一个系列
+    const modules = ['clothing', 'food', 'lodging', 'travel'];
+    const dates: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+    const orderTrend = dates.map(date => {
+      const item: any = { date: date.substring(5) }; // MM-DD
+      for (const mod of modules) item[mod] = 0;
+      orderRows.filter((r: any) => {
+        const rd = r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date).substring(0, 10);
+        return rd === date;
+      }).forEach((r: any) => {
+        if (item.hasOwnProperty(r.module)) item[r.module] = Number(r.total) || 0;
+      });
+      return item;
+    });
+
+    // 近7日用户增长（按创建日期分组）
+    const [userGrowthRows]: any = await pool.query(
+      `SELECT DATE(created_at) as date, COUNT(*) as count
+       FROM admin_user
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+       GROUP BY DATE(created_at)
+       ORDER BY date`
+    );
+    const userGrowth = dates.map(date => {
+      const found = userGrowthRows.find((r: any) => {
+        const rd = r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date).substring(0, 10);
+        return rd === date;
+      });
+      return { date: date.substring(5), count: found ? Number(found.count) : 0 };
+    });
+
+    // 内容统计（公告数、轮播图数、消息数作为内容指标）
+    const [[{ announcementCount }]]: any = await pool.query("SELECT COUNT(*) as announcementCount FROM announcement WHERE status = 'published'");
+    const [[{ bannerCount }]]: any = await pool.query("SELECT COUNT(*) as bannerCount FROM banner WHERE status = 'published'");
+    const [[{ messageCount }]]: any = await pool.query('SELECT COUNT(*) as messageCount FROM system_message');
+    const contentStats = [
+      { type: '公告', count: Number(announcementCount) },
+      { type: '轮播图', count: Number(bannerCount) },
+      { type: '消息', count: Number(messageCount) },
+    ];
+
+    // 商家统计：top商家按订单金额排序
+    const [topMerchants]: any = await pool.query(
+      `SELECT m.id, m.shop_name as shopName, m.module, m.status,
+              COALESCE(SUM(o.amount), 0) as totalAmount,
+              COUNT(o.id) as orderCount
+       FROM merchant m
+       LEFT JOIN orders o ON o.merchant_id = m.id AND o.status != 'cancelled'
+       GROUP BY m.id
+       ORDER BY totalAmount DESC
+       LIMIT 5`
+    );
+
+    // 财务统计
+    const [[finStats]]: any = await pool.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN amount ELSE 0 END), 0) as totalRevenue,
+         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN commission ELSE 0 END), 0) as platformIncome,
+         COALESCE((SELECT SUM(total_income) FROM settlement_sheet WHERE status = 'pending'), 0) as pendingSettlement
+       FROM orders`
+    );
+
+    ctx.body = {
+      code: 200, message: '查询成功',
+      data: {
+        dau: Number(dau),
+        newUsers: Number(newUsers),
+        orderCount: Number(todayOrder.orderCount),
+        gmv: Number(todayOrder.gmv),
+        totalUsers: Number(total_users),
+        totalMerchants: Number(total_merchants),
+        activeMerchants: Number(active_merchants),
+        orderTrend,
+        userGrowth,
+        contentStats,
+        merchantStats: {
+          total: Number(total_merchants),
+          active: Number(active_merchants),
+          top: topMerchants.map((m: any) => ({
+            id: m.id,
+            shopName: m.shopName,
+            module: m.module,
+            totalAmount: Number(m.totalAmount),
+            orderCount: Number(m.orderCount),
+          })),
+        },
+        financeStats: {
+          totalRevenue: Number(finStats.totalRevenue),
+          platformIncome: Number(finStats.platformIncome),
+          pendingSettlement: Number(finStats.pendingSettlement),
+        },
+      },
+    };
+  } catch (err: any) {
+    console.error('Dashboard error:', err.message);
+    ctx.body = { code: 500, message: '查询失败: ' + err.message, data: null };
+  }
 });
 
 // ====== USER MANAGEMENT ======
@@ -174,11 +301,13 @@ router.get('/admin/users/tourists', async (ctx) => {
   const page = Number(ctx.query.page) || 1;
   const pageSize = Number(ctx.query.pageSize) || 20;
   const keyword = ctx.query.keyword || '';
+  const status = ctx.query.status;
   const offset = (page - 1) * pageSize;
 
   let sql = 'SELECT * FROM admin_user WHERE 1=1';
   const params: any[] = [];
-  if (keyword) { sql += ' AND username LIKE ?'; params.push(`%${keyword}%`); }
+  if (keyword) { sql += ' AND (username LIKE ? OR name LIKE ? OR phone LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`); }
+  if (status) { sql += ' AND status = ?'; params.push(status); }
 
   const [countRows]: any = await pool.query(`SELECT COUNT(*) as total FROM (${sql}) t`, params);
   sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
@@ -190,13 +319,57 @@ router.get('/admin/users/tourists', async (ctx) => {
     data: {
       list: rows.map((u: any) => ({
         id: u.id, username: u.username, name: u.name,
-        phone: (u.phone || '').replace(/(\d{3})\d{4}(\d+)/, '$1****$2'),
+        phone: u.phone || '',
         roleId: u.role_id || 0, roleName: '', status: u.status,
         lastLoginAt: u.last_login_at, createdAt: u.created_at,
       })),
       total: countRows[0]?.total || 0, page, pageSize,
     },
   };
+});
+
+router.get('/admin/users/tourists/:id', async (ctx) => {
+  const [rows]: any = await pool.query('SELECT * FROM admin_user WHERE id = ?', [ctx.params.id]);
+  if (!rows.length) { ctx.body = { code: 404, message: '用户不存在', data: null }; return; }
+  const u = rows[0];
+
+  // 查询该用户的订单统计
+  const [[orderStats]]: any = await pool.query(
+    "SELECT COUNT(*) as totalOrders, COALESCE(SUM(amount), 0) as totalAmount FROM orders WHERE user_id = ? AND status != 'cancelled'",
+    [u.id]
+  );
+
+  ctx.body = {
+    code: 200, message: '查询成功',
+    data: {
+      id: u.id, username: u.username, name: u.name,
+      phone: u.phone || '',
+      avatar: '',
+      roleId: u.role_id || 0, roleName: u.role_id === 1 ? '超级管理员' : u.role_id === 2 ? '运营管理员' : '财务管理员',
+      status: u.status,
+      lastLoginAt: u.last_login_at,
+      createdAt: u.created_at,
+      orderStats: {
+        totalOrders: Number(orderStats.totalOrders),
+        totalAmount: Number(orderStats.totalAmount),
+      },
+    },
+  };
+});
+
+router.put('/admin/users/tourists/:id/ban', async (ctx) => {
+  await pool.query("UPDATE admin_user SET status = 'disabled' WHERE id = ?", [ctx.params.id]);
+  // 记录操作日志
+  await pool.query('INSERT INTO admin_operation_log (operator_id, operator_name, action_type, target_type, target_id, action_detail, ip) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [1, '超级管理员', 'ban_user', 'admin_user', ctx.params.id, '禁用用户', ctx.ip]);
+  ctx.body = { code: 200, message: '已禁用该用户', data: null };
+});
+
+router.put('/admin/users/tourists/:id/unban', async (ctx) => {
+  await pool.query("UPDATE admin_user SET status = 'active' WHERE id = ?", [ctx.params.id]);
+  await pool.query('INSERT INTO admin_operation_log (operator_id, operator_name, action_type, target_type, target_id, action_detail, ip) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [1, '超级管理员', 'unban_user', 'admin_user', ctx.params.id, '解禁用户', ctx.ip]);
+  ctx.body = { code: 200, message: '已解禁该用户', data: null };
 });
 
 // ====== MERCHANT MANAGEMENT ======
@@ -304,7 +477,7 @@ router.get('/admin/audit/applications', async (ctx) => {
   ctx.body = {
     code: 200, message: '查询成功',
     data: {
-      list: rows.map((a: any) => ({ id: a.id, userId: a.user_id, shopName: a.shop_name, module: a.module, contactName: a.contact_name, contactPhone: a.contact_phone, contactEmail: a.contact_email || '', shopDescription: a.shop_description || '', materials: a.materials || [], status: a.status, reviewerId: a.reviewer_id, reviewComment: a.review_comment || '', reviewedAt: a.reviewed_at, createdAt: a.created_at })),
+      list: rows.map((a: any) => ({ id: a.id, userId: a.user_id, shopName: a.shop_name, module: a.module, contactName: a.contact_name, contactPhone: a.contact_phone, contactEmail: a.contact_email || '', shopDescription: a.shop_description || '', materials: parseMaterials(a.materials), status: a.status, reviewerId: a.reviewer_id, reviewComment: a.review_comment || '', reviewedAt: a.reviewed_at, createdAt: a.created_at })),
       total: countRows[0]?.total || 0, page, pageSize,
     },
   };
@@ -314,7 +487,7 @@ router.get('/admin/audit/applications/:id', async (ctx) => {
   const [rows]: any = await pool.query('SELECT * FROM merchant_application WHERE id = ?', [ctx.params.id]);
   if (!rows.length) { ctx.body = { code: 404, message: '不存在', data: null }; return; }
   const a = rows[0];
-  ctx.body = { code: 200, message: '查询成功', data: { id: a.id, userId: a.user_id, shopName: a.shop_name, module: a.module, contactName: a.contact_name, contactPhone: a.contact_phone, contactEmail: a.contact_email || '', shopDescription: a.shop_description || '', materials: a.materials || [], status: a.status, reviewerId: a.reviewer_id, reviewComment: a.review_comment || '', reviewedAt: a.reviewed_at, createdAt: a.created_at } };
+  ctx.body = { code: 200, message: '查询成功', data: { id: a.id, userId: a.user_id, shopName: a.shop_name, module: a.module, contactName: a.contact_name, contactPhone: a.contact_phone, contactEmail: a.contact_email || '', shopDescription: a.shop_description || '', materials: parseMaterials(a.materials), status: a.status, reviewerId: a.reviewer_id, reviewComment: a.review_comment || '', reviewedAt: a.reviewed_at, createdAt: a.created_at } };
 });
 
 router.post('/admin/audit/applications/:id/audit', async (ctx) => {
@@ -491,6 +664,34 @@ router.post('/admin/finance/settlements/generate', async (ctx) => {
   ctx.body = { code: 200, message: `已为${merchants.length}个商家生成结算单`, data: null };
 });
 
+router.get('/admin/finance/settlements/:id', async (ctx) => {
+  const [rows]: any = await pool.query('SELECT * FROM settlement_sheet WHERE id = ?', [ctx.params.id]);
+  if (!rows.length) { ctx.body = { code: 404, message: '结算单不存在', data: null }; return; }
+  const s = rows[0];
+
+  // 查询关联结算记录
+  const [records]: any = await pool.query(
+    'SELECT * FROM settlement_record WHERE merchant_id = ? ORDER BY created_at DESC',
+    [s.merchant_id]
+  );
+
+  ctx.body = {
+    code: 200, message: '查询成功',
+    data: {
+      id: s.id, merchantId: s.merchant_id, merchantName: s.merchant_name,
+      period: s.period, totalOrders: s.total_orders,
+      totalAmount: Number(s.total_amount), totalCommission: Number(s.total_commission),
+      totalIncome: Number(s.total_income), status: s.status, createdAt: s.created_at,
+      records: records.map((r: any) => ({
+        id: r.id, orderId: r.order_id,
+        orderAmount: Number(r.order_amount), commissionRate: Number(r.commission_rate),
+        commissionAmount: Number(r.commission_amount), merchantIncome: Number(r.merchant_income),
+        status: r.status, settledAt: r.settled_at,
+      })),
+    },
+  };
+});
+
 router.post('/admin/finance/settlements/:id/confirm', async (ctx) => {
   await pool.query('UPDATE settlement_sheet SET status = ? WHERE id = ?', ['confirmed', ctx.params.id]);
   ctx.body = { code: 200, message: '结算已确认', data: null };
@@ -498,7 +699,53 @@ router.post('/admin/finance/settlements/:id/confirm', async (ctx) => {
 
 // ====== GLOBAL ORDERS ======
 router.get('/admin/orders', async (ctx) => {
-  ctx.body = { code: 200, message: '查询成功', data: { list: [], total: 0, page: 1, pageSize: 20 } };
+  const page = Number(ctx.query.page) || 1;
+  const pageSize = Number(ctx.query.pageSize) || 20;
+  const module = ctx.query.module;
+  const status = ctx.query.status;
+  const keyword = ctx.query.keyword;
+  const offset = (page - 1) * pageSize;
+
+  let sql = 'SELECT * FROM orders WHERE 1=1';
+  const params: any[] = [];
+  if (module) { sql += ' AND module = ?'; params.push(module); }
+  if (status) { sql += ' AND status = ?'; params.push(status); }
+  if (keyword) { sql += ' AND (order_no LIKE ? OR merchant_name LIKE ? OR user_name LIKE ?)'; params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`); }
+
+  const [countRows]: any = await pool.query(`SELECT COUNT(*) as total FROM (${sql}) t`, params);
+  sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  params.push(pageSize, offset);
+  const [rows]: any = await pool.query(sql, params);
+
+  ctx.body = {
+    code: 200, message: '查询成功',
+    data: {
+      list: rows.map((o: any) => ({
+        id: o.id, orderNo: o.order_no, module: o.module,
+        merchantId: o.merchant_id, merchantName: o.merchant_name,
+        userId: o.user_id, userName: o.user_name,
+        amount: Number(o.amount), commission: Number(o.commission),
+        status: o.status, createdAt: o.created_at, updatedAt: o.updated_at,
+      })),
+      total: countRows[0]?.total || 0, page, pageSize,
+    },
+  };
+});
+
+router.get('/admin/orders/:id', async (ctx) => {
+  const [rows]: any = await pool.query('SELECT * FROM orders WHERE id = ?', [ctx.params.id]);
+  if (!rows.length) { ctx.body = { code: 404, message: '订单不存在', data: null }; return; }
+  const o = rows[0];
+  ctx.body = {
+    code: 200, message: '查询成功',
+    data: {
+      id: o.id, orderNo: o.order_no, module: o.module,
+      merchantId: o.merchant_id, merchantName: o.merchant_name,
+      userId: o.user_id, userName: o.user_name,
+      amount: Number(o.amount), commission: Number(o.commission),
+      status: o.status, createdAt: o.created_at, updatedAt: o.updated_at,
+    },
+  };
 });
 
 // ====== SYSTEM SETTINGS ======
@@ -589,21 +836,115 @@ router.post('/merchant/auth/login', async (ctx) => {
 });
 
 router.get('/merchant/workbench', async (ctx) => {
-  ctx.body = { code: 200, message: '查询成功', data: { todayOrders: 0, pendingShip: 0, pendingRefund: 0, revenue: 0, recentOrders: [] } };
+  const today = new Date().toISOString().split('T')[0];
+  const [[todayStats]]: any = await pool.query(
+    `SELECT
+       COUNT(*) as todayOrders,
+       COALESCE(SUM(amount), 0) as revenue
+     FROM orders WHERE DATE(created_at) = ? AND status != 'cancelled'`,
+    [today]
+  );
+  const [[pendingStats]]: any = await pool.query(
+    "SELECT COUNT(*) as pendingShip FROM orders WHERE status = 'paid'"
+  );
+  const [[refundStats]]: any = await pool.query(
+    "SELECT COUNT(*) as pendingRefund FROM orders WHERE status = 'refunding'"
+  );
+
+  const [recentOrders]: any = await pool.query(
+    "SELECT id, order_no, module, amount, status, created_at FROM orders ORDER BY created_at DESC LIMIT 10"
+  );
+
+  ctx.body = {
+    code: 200, message: '查询成功',
+    data: {
+      todayOrders: Number(todayStats.todayOrders),
+      pendingShip: Number(pendingStats.pendingShip),
+      pendingRefund: Number(refundStats.pendingRefund),
+      revenue: Number(todayStats.revenue),
+      recentOrders: recentOrders.map((o: any) => ({
+        id: o.id, orderNo: o.order_no, module: o.module,
+        amount: Number(o.amount), status: o.status, createdAt: o.created_at,
+      })),
+    },
+  };
 });
 
 router.put('/merchant/store', async (ctx) => {
   const { shopName, contactName, contactPhone, contactEmail, shopDescription } = ctx.request.body as any;
-  await pool.query('UPDATE merchant SET shop_name=?, contact_name=?, contact_phone=?, contact_email=?, shop_description=? WHERE id=?', [shopName, contactName, contactPhone, contactEmail || '', shopDescription || '', 1]);
+  const token = ctx.get('Authorization')?.slice(7);
+  let merchantId = 1;
+  if (token) {
+    try {
+      const payload: any = jwt.verify(token, JWT_SECRET);
+      if (payload.role === 'merchant') merchantId = payload.userId;
+    } catch {}
+  }
+  await pool.query('UPDATE merchant SET shop_name=?, contact_name=?, contact_phone=?, contact_email=?, shop_description=? WHERE id=?',
+    [shopName, contactName, contactPhone, contactEmail || '', shopDescription || '', merchantId]);
   ctx.body = { code: 200, message: '店铺信息已更新', data: null };
 });
 
 router.get('/merchant/stats', async (ctx) => {
-  ctx.body = { code: 200, message: '查询成功', data: { totalSales: 0, totalOrders: 0, goodRate: 100, pageViews: 0, salesTrend: [], orderStats: [] } };
+  const token = ctx.get('Authorization')?.slice(7);
+  let merchantId = 1;
+  if (token) {
+    try {
+      const payload: any = jwt.verify(token, JWT_SECRET);
+      if (payload.role === 'merchant') merchantId = payload.userId;
+    } catch {}
+  }
+
+  const [[{ totalSales, totalOrders }]]: any = await pool.query(
+    "SELECT COALESCE(SUM(amount), 0) as totalSales, COUNT(*) as totalOrders FROM orders WHERE merchant_id = ? AND status != 'cancelled'",
+    [merchantId]
+  );
+
+  // 近7日销售趋势
+  const [salesTrend]: any = await pool.query(
+    `SELECT DATE(created_at) as date, COALESCE(SUM(amount), 0) as amount
+     FROM orders WHERE merchant_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+     GROUP BY DATE(created_at) ORDER BY date`,
+    [merchantId]
+  );
+
+  // 订单状态分布
+  const [orderStats]: any = await pool.query(
+    `SELECT status, COUNT(*) as count FROM orders WHERE merchant_id = ? GROUP BY status`,
+    [merchantId]
+  );
+
+  ctx.body = {
+    code: 200, message: '查询成功',
+    data: {
+      totalSales: Number(totalSales),
+      totalOrders: Number(totalOrders),
+      goodRate: 98,
+      pageViews: 0,
+      salesTrend: salesTrend.map((s: any) => ({
+        date: s.date instanceof Date ? s.date.toISOString().split('T')[0] : String(s.date).substring(0, 10),
+        amount: Number(s.amount),
+      })),
+      orderStats: orderStats.map((s: any) => ({ status: s.status, count: s.count })),
+    },
+  };
 });
 
 router.get('/merchant/messages', async (ctx) => {
-  ctx.body = { code: 200, message: '查询成功', data: { list: [], total: 0 } };
+  const [rows]: any = await pool.query(
+    'SELECT * FROM system_message WHERE user_id IS NULL OR user_id = 0 ORDER BY created_at DESC LIMIT 20'
+  );
+  const [countRows]: any = await pool.query('SELECT COUNT(*) as total FROM system_message');
+  ctx.body = {
+    code: 200, message: '查询成功',
+    data: {
+      list: rows.map((m: any) => ({
+        id: m.id, type: m.type, title: m.title, content: m.content,
+        isRead: m.is_read, createdAt: m.created_at,
+      })),
+      total: countRows[0]?.total || 0,
+    },
+  };
 });
 
 router.put('/merchant/account/password', async (ctx) => {

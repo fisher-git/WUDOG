@@ -26,7 +26,7 @@ const StoreInfo: React.FC = () => {
   useEffect(() => {
     api.get('/merchant/store')
       .then((res) => {
-        const d = res.data.data;
+        const d = res.data;
         form.setFieldsValue(d);
         setLogoUrl(d?.logo || '');
       })

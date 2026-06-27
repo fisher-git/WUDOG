@@ -36,8 +36,8 @@ const SettlementList: React.FC = () => {
     setLoading(true);
     try {
       const res = await getSettlements({ page, pageSize });
-      setData(res.data.data.list);
-      setTotal(res.data.data.total);
+      setData(res.data.list);
+      setTotal(res.data.total);
     } catch { } finally { setLoading(false); }
   }, [page, pageSize]);
 
@@ -45,7 +45,7 @@ const SettlementList: React.FC = () => {
 
   useEffect(() => {
     getMerchantList({ page: 1, pageSize: 1000 })
-      .then((res) => setMerchants(res.data.data.list.map((m) => ({ id: m.id, shopName: m.shopName }))))
+      .then((res) => setMerchants(res.data.list.map((m) => ({ id: m.id, shopName: m.shopName }))))
       .catch(() => {});
   }, []);
 

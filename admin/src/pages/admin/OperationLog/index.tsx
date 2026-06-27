@@ -12,10 +12,12 @@ const { Text } = Typography;
 
 interface OperationLog {
   id: number;
-  operator: string;
-  action: string;
-  target: string;
-  content: string;
+  operatorId: number;
+  operatorName: string;
+  actionType: string;
+  targetType: string;
+  targetId: number;
+  actionDetail: string;
   ip: string;
   createdAt: string;
 }
@@ -62,16 +64,16 @@ const OperationLogPage: React.FC = () => {
   const handleSearch = () => { setPage(1); fetchData(); };
 
   const columns: ColumnsType<OperationLog> = [
-    { title: '操作人', dataIndex: 'operator', width: 120 },
+    { title: '操作人', dataIndex: 'operatorName', width: 120 },
     {
-      title: '操作类型', dataIndex: 'action', width: 100,
+      title: '操作类型', dataIndex: 'actionType', width: 100,
       render: (a: string) => (
         <Tag color={actionColors[a] || 'default'}>{a}</Tag>
       ),
     },
-    { title: '操作对象', dataIndex: 'target', width: 150, ellipsis: true },
+    { title: '操作对象', dataIndex: 'targetType', width: 150, ellipsis: true },
     {
-      title: '内容', dataIndex: 'content', width: 250, ellipsis: true,
+      title: '内容', dataIndex: 'actionDetail', width: 250, ellipsis: true,
       render: (c: string) => (
         <Text ellipsis={{ tooltip: c }} style={{ maxWidth: 230 }}>{c}</Text>
       ),

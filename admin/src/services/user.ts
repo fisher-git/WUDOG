@@ -5,11 +5,16 @@ export interface TouristInfo {
   id: number;
   username: string;
   name: string;
-  avatar: string;
+  avatar?: string;
   phone: string;
   status: string;
-  registeredAt: string;
-  lastLoginAt: string;
+  createdAt: string;
+  registeredAt?: string;
+  lastLoginAt: string | null;
+  orderStats?: {
+    totalOrders: number;
+    totalAmount: number;
+  };
 }
 
 export interface TouristQuery extends PageQuery {

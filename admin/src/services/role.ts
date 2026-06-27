@@ -28,5 +28,5 @@ export function deleteRole(id: number) {
 }
 
 export function getPermissions() {
-  return api.get<ApiResponse<AdminPermissionInfo[]>>('/admin/permissions');
+  return api.get<ApiResponse<AdminPermissionInfo[]>>('/admin/roles/permissions');
 }

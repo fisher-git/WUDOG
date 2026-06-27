@@ -10,7 +10,7 @@ const SmsConfig: React.FC = () => {
 
   useEffect(() => {
     getSmsConfig()
-      .then((res) => form.setFieldsValue(res.data.data))
+      .then((res) => form.setFieldsValue(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [form]);
