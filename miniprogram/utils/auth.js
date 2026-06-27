@@ -1,17 +1,16 @@
-import { request } from './api';
+var request = require('./api').request;
 
-export function wxLogin(): Promise<any> {
-  return new Promise((resolve, reject) => {
+function wxLogin() {
+  return new Promise(function(resolve, reject) {
     wx.login({
-      success(res) {
+      success: function(res) {
         if (res.code) {
-          // 发送code到后端换取token
           request({
             url: '/public/wechat-login',
             method: 'POST',
             data: { code: res.code },
-          }).then((data: any) => {
-            if (data?.data?.token) {
+          }).then(function(data) {
+            if (data && data.data && data.data.token) {
               wx.setStorageSync('token', data.data.token);
               wx.setStorageSync('userInfo', data.data.userInfo);
               resolve(data.data);
@@ -28,11 +27,17 @@ export function wxLogin(): Promise<any> {
   });
 }
 
-export function checkLoginStatus(): boolean {
+function checkLoginStatus() {
   return !!wx.getStorageSync('token');
 }
 
-export function logout(): void {
+function logout() {
   wx.removeStorageSync('token');
   wx.removeStorageSync('userInfo');
 }
+
+module.exports = {
+  wxLogin: wxLogin,
+  checkLoginStatus: checkLoginStatus,
+  logout: logout,
+};
