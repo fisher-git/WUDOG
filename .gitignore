@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env.local
+*.log
+.DS_Store
+.superpowers/
+*.docx
+spec_text.txt
+~$*
+*.tmp

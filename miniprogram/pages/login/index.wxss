@@ -1,0 +1,15 @@
+.page { display: flex; flex-direction: column; align-items: center; min-height: 100vh; background: #fff; padding: 120rpx 48rpx; }
+.brand { text-align: center; margin-bottom: 80rpx; }
+.logo { font-size: 100rpx; display: block; }
+.brand-name { font-size: 44rpx; font-weight: bold; color: #1B3A5C; display: block; margin-top: 16rpx; }
+.brand-desc { font-size: 26rpx; color: #999; margin-top: 12rpx; }
+
+.wechat-btn { width: 100%; height: 96rpx; background: #07C160; color: #fff; font-size: 34rpx; border-radius: 48rpx; display: flex; align-items: center; justify-content: center; }
+.wechat-icon { font-size: 36rpx; margin-right: 12rpx; }
+
+.agreement { display: flex; align-items: center; margin-top: 32rpx; font-size: 24rpx; color: #999; }
+.link { color: #1B3A5C; }
+
+.alt-login { margin-top: 80rpx; text-align: center; }
+.divider { font-size: 24rpx; color: #ccc; display: block; margin-bottom: 32rpx; }
+.phone-login { font-size: 28rpx; color: #666; }

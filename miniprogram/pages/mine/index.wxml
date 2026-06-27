@@ -1,0 +1,48 @@
+<view class="page">
+  <!-- 未登录 -->
+  <view wx:if="{{!isLoggedIn}}" class="login-prompt">
+    <view class="avatar-placeholder">👤</view>
+    <text class="login-text">登录后查看更多精彩内容</text>
+    <button class="login-btn" bindtap="onLogin">微信一键登录</button>
+  </view>
+
+  <!-- 已登录 -->
+  <block wx:else>
+    <view class="user-header">
+      <image src="{{userInfo.avatar || '/images/avatar.jpg'}}" class="avatar"/>
+      <view class="user-info">
+        <text class="nickname">{{userInfo.nickname || '游客'}}</text>
+        <text class="user-id">ID: {{userInfo.id || '---'}}</text>
+      </view>
+      <text class="edit-link">编辑</text>
+    </view>
+
+    <!-- 订单概览 -->
+    <view class="order-bar card">
+      <view class="order-title-row"><text class="bar-title">我的订单</text><text class="all-orders" data-page="orders" bindtap="onNavigate">全部 ›</text></view>
+      <view class="order-items">
+        <view class="order-item" data-page="orders" bindtap="onNavigate"><text class="order-icon">💳</text><text class="order-label">待支付</text><text class="order-badge" wx:if="{{orderCounts.pendingPay > 0}}">{{orderCounts.pendingPay}}</text></view>
+        <view class="order-item"><text class="order-icon">📦</text><text class="order-label">待发货</text><text class="order-badge" wx:if="{{orderCounts.pendingShip > 0}}">{{orderCounts.pendingShip}}</text></view>
+        <view class="order-item"><text class="order-icon">🚚</text><text class="order-label">待收货</text><text class="order-badge" wx:if="{{orderCounts.pendingReceive > 0}}">{{orderCounts.pendingReceive}}</text></view>
+        <view class="order-item"><text class="order-icon">⭐</text><text class="order-label">待评价</text><text class="order-badge" wx:if="{{orderCounts.pendingReview > 0}}">{{orderCounts.pendingReview}}</text></view>
+      </view>
+    </view>
+
+    <!-- 功能菜单 -->
+    <view class="menu-list card">
+      <view class="menu-item" data-page="favorites" bindtap="onNavigate"><text class="menu-icon">❤️</text><text class="menu-label">我的收藏</text><text class="menu-arrow">›</text></view>
+      <view class="menu-item" data-page="photos" bindtap="onNavigate"><text class="menu-icon">📷</text><text class="menu-label">我的相册</text><text class="menu-arrow">›</text></view>
+      <view class="menu-item" data-page="addresses" bindtap="onNavigate"><text class="menu-icon">📍</text><text class="menu-label">收货地址</text><text class="menu-arrow">›</text></view>
+      <view class="menu-item" data-page="messages" bindtap="onNavigate">
+        <text class="menu-icon">🔔</text><text class="menu-label">消息通知</text><text class="menu-badge" wx:if="{{unreadMessages > 0}}">{{unreadMessages}}</text><text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <view class="menu-list card" style="margin-top:16rpx;">
+      <view class="menu-item" data-page="settings" bindtap="onNavigate"><text class="menu-icon">⚙️</text><text class="menu-label">设置</text><text class="menu-arrow">›</text></view>
+      <view class="menu-item"><text class="menu-icon">📞</text><text class="menu-label">联系客服</text><text class="menu-arrow">›</text></view>
+    </view>
+
+    <button class="logout-btn" bindtap="onLogout">退出登录</button>
+  </block>
+</view>

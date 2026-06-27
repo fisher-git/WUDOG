@@ -1,0 +1,31 @@
+.page { background: #fff; min-height: 100vh; }
+.search-header { display: flex; align-items: center; padding: 16rpx 24rpx; background: #fff; border-bottom: 1rpx solid #F0F0F0; }
+.search-box { flex: 1; display: flex; align-items: center; background: #F5F5F5; border-radius: 32rpx; padding: 8rpx 16rpx; }
+.search-input { flex: 1; height: 64rpx; font-size: 28rpx; padding: 0 12rpx; }
+.clear-btn { width: 40rpx; height: 40rpx; display: flex; align-items: center; justify-content: center; color: #999; font-size: 24rpx; border-radius: 50%; background: #ddd; }
+.search-btn { margin-left: 16rpx; color: #C8A45C; font-size: 28rpx; white-space: nowrap; }
+
+.suggestions { padding: 0 24rpx; }
+.suggestion-item { padding: 24rpx 0; border-bottom: 1rpx solid #F5F5F5; font-size: 28rpx; }
+
+.section { padding: 24rpx; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
+.section-label { font-size: 28rpx; font-weight: bold; color: #333; margin-bottom: 16rpx; display: block; }
+.clear-link { color: #999; font-size: 24rpx; }
+
+.tag-group { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.tag { padding: 10rpx 24rpx; background: #F5F5F5; border-radius: 32rpx; font-size: 26rpx; color: #666; }
+.tag.hot { background: #FFF5E6; color: #C8A45C; }
+
+.tabs { white-space: nowrap; padding: 16rpx 24rpx; border-bottom: 1rpx solid #F0F0F0; }
+.tab-item { display: inline-block; padding: 12rpx 24rpx; margin-right: 16rpx; font-size: 26rpx; color: #666; }
+.tab-item.active { color: #C8A45C; font-weight: bold; border-bottom: 4rpx solid #C8A45C; }
+
+.loading { text-align: center; padding: 80rpx; color: #999; }
+.result-list { padding: 16rpx 24rpx; }
+.result-item { display: flex; margin-bottom: 16rpx; }
+.result-img { width: 160rpx; height: 120rpx; border-radius: 12rpx 0 0 12rpx; flex-shrink: 0; }
+.result-info { padding: 16rpx; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.result-title { font-size: 28rpx; color: #333; font-weight: bold; }
+.result-desc { font-size: 24rpx; color: #999; margin-top: 8rpx; }
+.result-price { font-size: 28rpx; color: #C8A45C; font-weight: bold; margin-top: 8rpx; }

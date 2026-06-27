@@ -1,0 +1,108 @@
+<!-- 首页 -->
+<view class="page">
+  <!-- 顶部搜索栏 -->
+  <view class="search-bar" bindtap="onSearchTap">
+    <view class="search-input">
+      <text class="search-icon">🔍</text>
+      <text class="search-placeholder">搜索商品、民宿、路线...</text>
+    </view>
+    <view class="msg-icon">🔔</view>
+  </view>
+
+  <!-- 加载骨架屏 -->
+  <block wx:if="{{loading}}">
+    <view class="skeleton banner-skeleton"></view>
+    <view class="skeleton-grid">
+      <view class="skeleton" wx:for="{{5}}" wx:key="index" style="width:120rpx;height:120rpx;border-radius:16rpx;margin:16rpx;"></view>
+    </view>
+  </block>
+
+  <!-- 轮播图 -->
+  <block wx:else>
+    <swiper class="banner-swiper" autoplay circular indicator-dots interval="4000" duration="500">
+      <swiper-item wx:for="{{banners}}" wx:key="id">
+        <image src="{{item.imageUrl}}" mode="aspectFill" class="banner-image" data-item="{{item}}" bindtap="onBannerTap"/>
+        <view class="banner-title">{{item.title}}</view>
+      </swiper-item>
+    </swiper>
+
+    <!-- 功能入口 5分类 -->
+    <view class="category-grid">
+      <view class="category-item" wx:for="{{categories}}" wx:key="label" data-module="{{item.module}}" bindtap="onCategoryTap">
+        <view class="category-icon">{{item.icon}}</view>
+        <text class="category-label">{{item.label}}</text>
+      </view>
+    </view>
+
+    <!-- 活动横幅 -->
+    <view class="section" wx:if="{{activities.length > 0}}">
+      <scroll-view scroll-x class="activity-scroll">
+        <view class="activity-card" wx:for="{{activities}}" wx:key="id" style="background-image:url({{item.imageUrl}})">
+          <view class="activity-mask">
+            <text class="activity-title">{{item.title}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 热门推荐 -->
+    <view class="section" wx:if="{{recommendations.length > 0}}">
+      <text class="section-title">🔥 热门推荐</text>
+      <scroll-view scroll-x class="recommend-scroll">
+        <view class="recommend-card card" wx:for="{{recommendations}}" wx:key="id">
+          <image src="{{item.imageUrl || '/images/placeholder.jpg'}}" mode="aspectFill" class="recommend-img"/>
+          <view class="recommend-info">
+            <text class="recommend-name">{{item.slotName}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 非遗文化 -->
+    <view class="section">
+      <text class="section-title">🏛 苗族文化</text>
+      <view class="culture-list">
+        <view class="culture-card card" wx:for="{{culturalStories}}" wx:key="id">
+          <image src="{{item.image}}" mode="aspectFill" class="culture-img"/>
+          <view class="culture-info">
+            <text class="culture-title">{{item.title}}</text>
+            <text class="culture-desc">{{item.description}}</text>
+            <text class="culture-link">了解更多 ›</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 平台公告 -->
+    <view class="section" wx:if="{{announcements.length > 0}}">
+      <text class="section-title">📢 平台公告</text>
+      <view class="announce-list">
+        <view class="announce-item" wx:for="{{announcements}}" wx:key="id">
+          <text class="announce-dot">•</text>
+          <text class="announce-text">{{item.title}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 精彩游记 -->
+    <view class="section">
+      <text class="section-title">📸 精彩游记</text>
+      <view class="travelogue-waterfall">
+        <view class="travelogue-card card" wx:for="{{travelogues}}" wx:key="id" data-id="{{item.id}}" bindtap="onTravelogueTap">
+          <image src="{{item.coverImage}}" mode="widthFix" class="travelogue-img"/>
+          <view class="travelogue-info">
+            <text class="travelogue-title">{{item.title}}</text>
+            <view class="travelogue-meta">
+              <image src="{{item.author.avatar}}" class="author-avatar"/>
+              <text class="author-name">{{item.author.name}}</text>
+              <text class="like-count">❤ {{item.likeCount}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="load-more" wx:if="{{travelogueLoading}}">
+        <text>加载中...</text>
+      </view>
+    </view>
+  </block>
+</view>

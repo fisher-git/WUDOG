@@ -1,0 +1,35 @@
+<view class="page">
+  <view wx:if="{{items.length === 0}}" class="empty-state">
+    <text style="font-size:80rpx;">🛒</text>
+    <text>购物车是空的</text>
+    <text style="color:#999;font-size:24rpx;">快去挑选心仪的商品吧</text>
+  </view>
+  <block wx:else>
+    <view class="cart-list">
+      <view class="cart-item" wx:for="{{items}}" wx:key="id">
+        <checkbox value="{{item.id}}" checked="{{selectedIds.has(item.id)}}" bindchange="onSelectItem" data-id="{{item.id}}"/>
+        <image src="{{item.image || '/images/placeholder.jpg'}}" mode="aspectFill" class="cart-img"/>
+        <view class="cart-info">
+          <text class="cart-name">{{item.name}}</text>
+          <text class="cart-spec">{{item.spec || ''}}</text>
+          <view class="cart-bottom">
+            <text class="cart-price">¥{{item.price}}</text>
+            <view class="quantity-stepper">
+              <text class="qty-btn" bindtap="onChangeQuantity" data-id="{{item.id}}" data-action="minus">−</text>
+              <text class="qty-value">{{item.quantity}}</text>
+              <text class="qty-btn" bindtap="onChangeQuantity" data-id="{{item.id}}" data-action="plus">+</text>
+            </view>
+          </view>
+        </view>
+        <text class="delete-btn" bindtap="onDelete" data-id="{{item.id}}">🗑</text>
+      </view>
+    </view>
+    <view class="cart-footer">
+      <checkbox-group bindchange="onSelectAll"><checkbox value="all" checked="{{allSelected}}"/>全选</checkbox-group>
+      <view class="cart-total">
+        <text>合计: </text><text class="total-price">¥{{totalPrice}}</text>
+      </view>
+      <button class="checkout-btn" bindtap="onCheckout">结算({{selectedIds.size}})</button>
+    </view>
+  </block>
+</view>

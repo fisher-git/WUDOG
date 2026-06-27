@@ -1,0 +1,29 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/search/index",
+    "pages/cart/index",
+    "pages/mine/index",
+    "pages/login/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "乌东文旅",
+    "navigationBarBackgroundColor": "#1B3A5C",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F5F5F5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#C8A45C",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "首页", "iconPath": "images/tab/home.png", "selectedIconPath": "images/tab/home-active.png" },
+      { "pagePath": "pages/search/index", "text": "搜索", "iconPath": "images/tab/search.png", "selectedIconPath": "images/tab/search-active.png" },
+      { "pagePath": "pages/cart/index", "text": "购物车", "iconPath": "images/tab/cart.png", "selectedIconPath": "images/tab/cart-active.png" },
+      { "pagePath": "pages/mine/index", "text": "我的", "iconPath": "images/tab/mine.png", "selectedIconPath": "images/tab/mine-active.png" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

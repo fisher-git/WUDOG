@@ -1,0 +1,28 @@
+{
+  "name": "wudong-travel",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "server",
+    "admin",
+    "web"
+  ],
+  "scripts": {
+    "dev:server": "npm -w @wudong/server run dev",
+    "dev:admin": "npm -w @wudong/admin run dev",
+    "dev:web": "npm -w @wudong/web run dev",
+    "build:server": "npm -w @wudong/server run build",
+    "build:admin": "npm -w @wudong/admin run build",
+    "build:web": "npm -w @wudong/web run build",
+    "lint": "eslint --ext .ts,.tsx .",
+    "test": "npm -w @wudong/server run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "prettier": "^3.2.0"
+  }
+}
